@@ -18,7 +18,7 @@ engine = db.create_engine(connection_string)
 def scrape_stock_data():
     today_date = datetime.datetime.now()
     date_list = []
-    for i in range(5):
+    for i in range(2):
         i_date = today_date - datetime.timedelta(days=i)
         date_list.append(i_date.strftime('%Y%m%d'))
 
@@ -54,6 +54,7 @@ def load_stock_data():
         stock_price_data = pd.read_csv('stock_price_data.csv')
         if stock_price_data.empty:
             raise pd.errors.EmptyDataError
+        print("已成功讀取股票資料")
     except (FileNotFoundError, pd.errors.EmptyDataError):
         # 如果檔案不存在或內容為空，執行爬蟲來獲取資料
         scrape_stock_data()
