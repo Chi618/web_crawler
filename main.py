@@ -3,8 +3,9 @@ import requests
 import pandas as pd
 from bs4 import BeautifulSoup
 import sqlalchemy as db
-from flask import Flask, render_template
-
+from flask import Flask, render_template, send_file
+import matplotlib.pyplot as plt
+from io import BytesIO
 app = Flask(__name__)
 
 # Database configuration
@@ -17,7 +18,7 @@ engine = db.create_engine(connection_string)
 def scrape_stock_data():
     today_date = datetime.datetime.now()
     date_list = []
-    for i in range(3):
+    for i in range(5):
         i_date = today_date - datetime.timedelta(days=i)
         date_list.append(i_date.strftime('%Y%m%d'))
 
@@ -80,8 +81,51 @@ def display_data():
 
         # Convert DataFrame to HTML table
         html_table = df.to_html(index=False)
+
+         # Include link to bar chart route
+        bar_chart_link = '<a href="/bar_chart">View Bar Chart</a>'
         
-        return render_template('index.html', table=html_table)
+
+        return render_template('index.html', table=html_table, bar_chart_link=bar_chart_link)
+    except Exception as e:
+        return f"Error: {e}"
+
+# Route to display bar chart and pie chart
+@app.route('/bar_chart')
+def display_bar_and_pie_chart():
+    try:
+        # Query data from the database
+        query = "SELECT * FROM stock"
+        df = pd.read_sql(query, engine)
+
+        # Count the values in the "漲跌(+/-)" column
+        value_counts = df['漲跌(+/-)'].value_counts()
+
+        # Plot the bar chart
+        plt.figure(figsize=(12, 6))
+        plt.subplot(1, 2, 1)  # Subplot for bar chart
+        value_counts.plot(kind='bar', color='skyblue')
+        plt.title('Count of Up or Down(+/-)')
+        plt.xlabel('Up or Down(+/-)')
+        plt.ylabel('Count')
+        plt.xticks(rotation=0)
+
+        # Plot the pie chart
+        plt.subplot(1, 2, 2)  # Subplot for pie chart
+        plt.pie(value_counts, labels=value_counts.index, autopct='%1.1f%%', startangle=140)
+        plt.title('Percentage of Up or Down(+/-)')
+        plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle
+
+        plt.tight_layout()  # Adjust layout to prevent overlap
+
+        # Save the combined plot to a bytes buffer
+        buffer = BytesIO()
+        plt.savefig(buffer, format='png')
+        buffer.seek(0)
+
+        plt.close()  # Close the plot to release memory
+
+        return send_file(buffer, mimetype='image/png')
     except Exception as e:
         return f"Error: {e}"
 
